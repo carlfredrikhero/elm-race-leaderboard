@@ -52,12 +52,14 @@ view model =
             [ input
                 [ type_ "text"
                 , onInput UsernameInput
+                , value model.username
                 , placeholder "username"
                 ]
                 []
             , input
-                [ type_ "text"
+                [ type_ "password"
                 , onInput PasswordInput
+                , value model.password
                 , placeholder "password"
                 ]
                 []
