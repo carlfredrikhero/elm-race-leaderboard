@@ -1,0 +1,47 @@
+@import '~bulma/bulma.sass';
+
+html, body {
+  height: 100vh;
+}
+body {
+  background: #f5f7fa;
+}
+
+.section {
+  background: inherit;
+}
+
+.container {
+  background: $white;
+}
+
+nav.hero {
+  background: $blue;
+
+  .container {
+    background: inherit;
+  }
+
+  .logo {
+    font-weight: bold;
+  }
+
+  .nav-item {
+    color: $white;
+
+    &:last-child {
+      margin-left: auto;
+    }
+  }
+}
+
+.search-section {
+  padding-bottom: 0;
+}
+
+// Login.elm
+
+.box {
+  box-shadow: none;
+  border-radius: 0;
+}

@@ -1,7 +1,7 @@
 module Leaderboard exposing (..)
 
 import Html exposing (Html, form, div, input, table, tr, td, thead, tbody, th, text)
-import Html.Attributes exposing (type_, placeholder, value)
+import Html.Attributes exposing (type_, placeholder, value, class)
 import Html.Events exposing (onInput)
 
 
@@ -39,22 +39,27 @@ update msg model =
 
 view : Model -> Html Msg
 view model =
-    div []
-        [ input
-            [ type_ "search"
-            , placeholder "Search..."
-            , value model.query
-            , onInput QueryInput
-            ]
-            []
-        , table []
-            [ thead []
-                [ tr []
-                    [ th [] [ text "Runner name" ]
-                    ]
+    div [ class "container" ]
+        [ div [ class "section search-section" ]
+            [ input
+                [ class "input"
+                , type_ "search"
+                , placeholder "Search..."
+                , value model.query
+                , onInput QueryInput
                 ]
-            , tbody []
-                (List.map runnerRow model.runners)
+                []
+            ]
+        , div [ class "section" ]
+            [ table [ class "table" ]
+                [ thead []
+                    [ tr []
+                        [ th [] [ text "Runner name" ]
+                        ]
+                    ]
+                , tbody []
+                    (List.map runnerRow model.runners)
+                ]
             ]
         ]
 
