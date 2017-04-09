@@ -34,7 +34,7 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         Navigate page ->
-            ( { model | page = page }, Cmd.none )
+            ( page, Cmd.none )
 
 
 
@@ -45,7 +45,7 @@ view : Model -> Html Msg
 view model =
     let
         page =
-            case model.page of
+            case model of
                 NotFound ->
                     div []
                         [ h1 []
@@ -56,7 +56,9 @@ view model =
         div []
             [ viewHeader model
             , div [ class "section" ]
-                [ page
+                [ div [ class "container" ]
+                    [ page
+                    ]
                 ]
             ]
 

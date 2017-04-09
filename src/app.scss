@@ -9,6 +9,11 @@ body {
 
 .section {
   background: inherit;
+  padding-bottom: 0;
+
+  &:last-child {
+    padding-bottom: 3rem;
+  }
 }
 
 .container {
@@ -33,10 +38,6 @@ nav.hero {
       margin-left: auto;
     }
   }
-}
-
-.search-section {
-  padding-bottom: 0;
 }
 
 // Login.elm

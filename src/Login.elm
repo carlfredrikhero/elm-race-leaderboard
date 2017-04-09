@@ -1,7 +1,7 @@
 module Login exposing (..)
 
-import Html exposing (Html, form, input, div, h1, text, p, button)
-import Html.Attributes exposing (type_, placeholder, value, class)
+import Html exposing (Html, form, input, div, h1, text, p, button, nav, a)
+import Html.Attributes exposing (type_, placeholder, value, class, href)
 import Html.Events exposing (onInput)
 
 
@@ -11,6 +11,7 @@ import Html.Events exposing (onInput)
 type alias Model =
     { username : String
     , password : String
+    , error : Maybe String
     }
 
 
@@ -18,6 +19,7 @@ initModel : Model
 initModel =
     { username = ""
     , password = ""
+    , error = Nothing
     }
 
 
@@ -28,6 +30,8 @@ initModel =
 type Msg
     = UsernameInput String
     | PasswordInput String
+    | Submit
+    | Error String
 
 
 update : Msg -> Model -> Model
@@ -39,6 +43,12 @@ update msg model =
         PasswordInput password ->
             { model | password = password }
 
+        Submit ->
+            model
+
+        Error error ->
+            { model | error = Just error }
+
 
 
 -- view
@@ -47,11 +57,34 @@ update msg model =
 view : Model -> Html Msg
 view model =
     div []
+        [ viewHeader model
+        , div [ class "section" ]
+            [ loginForm model
+            ]
+        ]
+
+
+errorPanel : Maybe String -> Html a
+errorPanel error =
+    case error of
+        Nothing ->
+            text ""
+
+        Just msg ->
+            div [ class "notification is-danger" ]
+                [ text msg
+                ]
+
+
+loginForm : Model -> Html Msg
+loginForm model =
+    div []
         [ div [ class "columns is-vcentered" ]
             [ div [ class "column is-4 is-offset-4" ]
                 [ h1 [ class "title" ] [ text "Login for now..." ]
                 , div [ class "box" ]
-                    [ form []
+                    [ errorPanel model.error
+                    , form []
                         [ textInputField
                             "Username"
                             [ class "input"
@@ -77,6 +110,25 @@ view model =
                         ]
                     ]
                 ]
+            ]
+        ]
+
+
+viewHeader : Model -> Html Msg
+viewHeader model =
+    nav [ class "nav hero is-default" ]
+        [ div [ class "container" ]
+            [ a [ class "nav-item logo" ] [ text "Race Results" ]
+            , a
+                [ class "nav-item"
+                , href "#"
+                ]
+                [ text "Leaderboard" ]
+            , a
+                [ class "nav-item"
+                , href "#"
+                ]
+                [ text "Login" ]
             ]
         ]
 
