@@ -1,8 +1,8 @@
 module Runner exposing (..)
 
 import Html exposing (Html, form, input, div, h1, text, p, button, nav, a)
-import Html.Attributes exposing (type_, placeholder, value, class, href)
-import Html.Events exposing (onInput)
+import Html.Attributes exposing (type_, placeholder, value, class, href, classList)
+import Html.Events exposing (onInput, onSubmit)
 
 
 -- model
@@ -22,19 +22,21 @@ type alias Model =
     }
 
 
-initModel : Model
-initModel =
-    { id = ""
-    , name = ""
-    , nameError = Nothing
-    , location = ""
-    , locationError = Nothing
-    , age = ""
-    , ageError = Nothing
-    , bib = ""
-    , bibError = Nothing
-    , error = Nothing
-    }
+init : ( Model, Cmd Msg )
+init =
+    ( { id = ""
+      , name = ""
+      , nameError = Nothing
+      , location = ""
+      , locationError = Nothing
+      , age = ""
+      , ageError = Nothing
+      , bib = ""
+      , bibError = Nothing
+      , error = Nothing
+      }
+    , Cmd.none
+    )
 
 
 type Msg
@@ -45,64 +47,94 @@ type Msg
     | Save
 
 
-update : Msg -> Model -> Model
+update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         NameInput name ->
-            { model
+            ( { model
                 | name = name
                 , nameError = Nothing
-            }
+              }
+            , Cmd.none
+            )
 
         LocationInput location ->
-            { model
+            ( { model
                 | location = location
                 , locationError = Nothing
-            }
+              }
+            , Cmd.none
+            )
 
         AgeInput age ->
-            { model
+            ( { model
                 | age = age
                 , ageError = Nothing
-            }
+              }
+            , Cmd.none
+            )
 
         BibInput bib ->
-            { model
+            ( { model
                 | bib = bib
                 , bibError = Nothing
-            }
+              }
+            , Cmd.none
+            )
 
         Save ->
-            model
+            ( model, Cmd.none )
 
 
 view : Model -> Html Msg
 view model =
     div []
-        [ viewHeader model
-        , div [ class "section" ]
-            [ div [ class "container" ]
-                [ runnerForm model
+        [ div [ class "box" ]
+            [ h1 [ class "title" ] [ text "Add runner" ]
+            , errorPanel model.error
+            , form [ onSubmit Save ]
+                [ textInputField
+                    "Name"
+                    [ value model.name
+                    , class "greetings"
+                    , onInput NameInput
+                    , placeholder "Name"
+                    ]
+                    (Maybe.withDefault
+                        ""
+                        model.nameError
+                    )
+                , textInputField
+                    "Location"
+                    [ value model.location
+                    , onInput LocationInput
+                    , placeholder "Location"
+                    ]
+                    (Maybe.withDefault
+                        ""
+                        model.locationError
+                    )
+                , numberInputField
+                    "Age"
+                    [ value model.age
+                    , onInput AgeInput
+                    , placeholder "Age"
+                    , Html.Attributes.min "0"
+                    ]
+                , numberInputField
+                    "Bib #"
+                    [ value model.bib
+                    , onInput BibInput
+                    , placeholder "Bib #"
+                    , Html.Attributes.min "0"
+                    ]
+                , buttonInputField
+                    "Save"
+                    [ class "button is-primary"
+                    , type_ "button"
+                    , value "Save"
+                    ]
                 ]
-            ]
-        ]
-
-
-viewHeader : Model -> Html Msg
-viewHeader model =
-    nav [ class "nav hero is-default" ]
-        [ div [ class "container" ]
-            [ a [ class "nav-item logo" ] [ text "Race Results" ]
-            , a
-                [ class "nav-item"
-                , href "#"
-                ]
-                [ text "Leaderboard" ]
-            , a
-                [ class "nav-item"
-                , href "#"
-                ]
-                [ text "Login" ]
             ]
         ]
 
@@ -119,46 +151,29 @@ errorPanel error =
                 ]
 
 
-runnerForm : Model -> Html Msg
-runnerForm model =
-    div []
-        [ div [ class "box" ]
-            [ h1 [ class "title" ] [ text "Add runner" ]
-            , errorPanel model.error
-            , form []
-                [ textInputField
-                    "Name"
-                    [ class "input"
-                    , type_ "text"
-                    , value model.name
-                    , placeholder "Name"
-                    ]
-                  -- , textInputField
-                  --     "Password"
-                  --     [ class "input"
-                  --     , type_ "password"
-                  --     , onInput PasswordInput
-                  --     , value model.password
-                  --     , placeholder "Password"
-                  --     ]
-                , buttonInputField
-                    "Save"
-                    [ class "button is-primary"
-                    , type_ "button"
-                    , value "Save"
-                    ]
+textInputField : String -> List (Html.Attribute Msg) -> String -> Html Msg
+textInputField label attr error =
+    let
+        cls =
+            [ ( "input", True ), ( "is-danger", not (String.isEmpty error) ) ]
+    in
+        div [ class "field" ]
+            [ Html.label [ class "label" ] [ text label ]
+            , p [ class "control" ]
+                [ input
+                    ((classList cls) :: (type_ "text") :: attr)
+                    []
                 ]
             ]
-        ]
 
 
-textInputField : String -> List (Html.Attribute Msg) -> Html Msg
-textInputField label attr =
+numberInputField : String -> List (Html.Attribute Msg) -> Html Msg
+numberInputField label attr =
     div [ class "field" ]
         [ Html.label [ class "label" ] [ text label ]
         , p [ class "control" ]
             [ input
-                attr
+                ((class "input") :: (type_ "number") :: attr)
                 []
             ]
         ]
@@ -175,10 +190,6 @@ buttonInputField label attr =
         ]
 
 
-main : Program Never Model Msg
-main =
-    Html.beginnerProgram
-        { model = initModel
-        , view = view
-        , update = update
-        }
+subscriptions : Model -> Sub Msg
+subscriptions model =
+    Sub.none

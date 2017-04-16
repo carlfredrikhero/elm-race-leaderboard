@@ -2,7 +2,7 @@ module Login exposing (..)
 
 import Html exposing (Html, form, input, div, h1, text, p, button, nav, a)
 import Html.Attributes exposing (type_, placeholder, value, class, href)
-import Html.Events exposing (onInput)
+import Html.Events exposing (onInput, onSubmit)
 
 
 -- model
@@ -15,12 +15,14 @@ type alias Model =
     }
 
 
-initModel : Model
-initModel =
-    { username = ""
-    , password = ""
-    , error = Nothing
-    }
+init : ( Model, Cmd Msg )
+init =
+    ( { username = ""
+      , password = ""
+      , error = Nothing
+      }
+    , Cmd.none
+    )
 
 
 
@@ -34,57 +36,31 @@ type Msg
     | Error String
 
 
-update : Msg -> Model -> Model
+update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         UsernameInput username ->
-            { model | username = username }
+            ( { model | username = username }, Cmd.none )
 
         PasswordInput password ->
-            { model | password = password }
+            ( { model | password = password }, Cmd.none )
 
         Submit ->
-            model
+            ( model, Cmd.none )
 
         Error error ->
-            { model | error = Just error }
-
-
-
--- view
+            ( { model | error = Just error }, Cmd.none )
 
 
 view : Model -> Html Msg
 view model =
     div []
-        [ viewHeader model
-        , div [ class "section" ]
-            [ loginForm model
-            ]
-        ]
-
-
-errorPanel : Maybe String -> Html a
-errorPanel error =
-    case error of
-        Nothing ->
-            text ""
-
-        Just msg ->
-            div [ class "notification is-danger" ]
-                [ text msg
-                ]
-
-
-loginForm : Model -> Html Msg
-loginForm model =
-    div []
         [ div [ class "columns is-vcentered" ]
             [ div [ class "column is-4 is-offset-4" ]
-                [ h1 [ class "title" ] [ text "Login for now..." ]
+                [ h1 [ class "title" ] [ text "Login" ]
                 , div [ class "box" ]
                     [ errorPanel model.error
-                    , form []
+                    , form [ onSubmit Submit ]
                         [ textInputField
                             "Username"
                             [ class "input"
@@ -114,23 +90,16 @@ loginForm model =
         ]
 
 
-viewHeader : Model -> Html Msg
-viewHeader model =
-    nav [ class "nav hero is-default" ]
-        [ div [ class "container" ]
-            [ a [ class "nav-item logo" ] [ text "Race Results" ]
-            , a
-                [ class "nav-item"
-                , href "#"
+errorPanel : Maybe String -> Html a
+errorPanel error =
+    case error of
+        Nothing ->
+            text ""
+
+        Just msg ->
+            div [ class "notification is-danger" ]
+                [ text msg
                 ]
-                [ text "Leaderboard" ]
-            , a
-                [ class "nav-item"
-                , href "#"
-                ]
-                [ text "Login" ]
-            ]
-        ]
 
 
 textInputField : String -> List (Html.Attribute Msg) -> Html Msg
@@ -156,10 +125,6 @@ buttonInputField label attr =
         ]
 
 
-main : Program Never Model Msg
-main =
-    Html.beginnerProgram
-        { model = initModel
-        , view = view
-        , update = update
-        }
+subscriptions : Model -> Sub Msg
+subscriptions model =
+    Sub.none

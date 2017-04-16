@@ -1,7 +1,7 @@
 module Leaderboard exposing (..)
 
 import Html exposing (Html, form, div, input, table, tr, td, thead, tbody, th, text, nav, a)
-import Html.Attributes exposing (type_, placeholder, value, class, href)
+import Html.Attributes exposing (type_, placeholder, value, class, href, id)
 import Html.Events exposing (onInput)
 
 
@@ -16,13 +16,15 @@ type alias Model =
     }
 
 
-initModel : Model
-initModel =
-    { error = Nothing
-    , runners = tempRunners
-    , query = ""
-    , active = True
-    }
+init : ( Model, Cmd Msg )
+init =
+    ( { error = Nothing
+      , runners = tempRunners
+      , query = ""
+      , active = True
+      }
+    , Cmd.none
+    )
 
 
 type alias Runner =
@@ -49,42 +51,22 @@ type Msg
     = SearchInput String
 
 
-update : Msg -> Model -> Model
+update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         SearchInput query ->
-            { model | query = query }
+            ( { model | query = query }, Cmd.none )
 
 
 view : Model -> Html Msg
 view model =
-    div [ class "container" ]
-        [ viewHeader model
-        , div [ class "section" ]
+    div [ id "leaderboard" ]
+        [ div [ class "section" ]
             [ errorPanel model.error
             , searchPanel model.query
             ]
         , div [ class "section" ]
             [ runnersPanel model
-            ]
-        ]
-
-
-viewHeader : Model -> Html Msg
-viewHeader model =
-    nav [ class "nav hero is-default" ]
-        [ div [ class "container" ]
-            [ a [ class "nav-item logo" ] [ text "Race Results" ]
-            , a
-                [ class "nav-item"
-                , href "#"
-                ]
-                [ text "Leaderboard" ]
-            , a
-                [ class "nav-item"
-                , href "#"
-                ]
-                [ text "Login" ]
             ]
         ]
 
@@ -147,10 +129,6 @@ runnerRow runner =
         ]
 
 
-main : Program Never Model Msg
-main =
-    Html.beginnerProgram
-        { model = initModel
-        , view = view
-        , update = update
-        }
+subscriptions : Model -> Sub Msg
+subscriptions model =
+    Sub.none

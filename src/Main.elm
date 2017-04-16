@@ -1,25 +1,61 @@
 module Main exposing (..)
 
-import Html exposing (Html, div, nav, a, span, text, header, h1)
+import Html exposing (Html, div, nav, a, span, text, header, h1, p)
 import Html.Attributes exposing (href, class)
+import Navigation exposing (program, Location)
+import Leaderboard
+import Login
+import Runner
 
 
 -- model
 
 
 type alias Model =
-    Page
-
-
-init : ( Model, Cmd Msg )
-init =
-    ( NotFound
-    , Cmd.none
-    )
+    { page : Page
+    , leaderBoard : Leaderboard.Model
+    , login : Login.Model
+    , runner : Runner.Model
+    }
 
 
 type Page
     = NotFound
+    | LeaderboardPage
+    | LoginPage
+    | RunnerPage
+
+
+init : Location -> ( Model, Cmd Msg )
+init location =
+    let
+        page =
+            hashToPage location.hash
+
+        ( leaderBoardInitModel, leaderboardCmd ) =
+            Leaderboard.init
+
+        ( loginInitModel, loginCmd ) =
+            Login.init
+
+        ( runnerInitModel, runnerCmd ) =
+            Runner.init
+
+        initModel =
+            { page = page
+            , leaderBoard = leaderBoardInitModel
+            , login = loginInitModel
+            , runner = runnerInitModel
+            }
+
+        cmds =
+            Cmd.batch
+                [ Cmd.map LeaderboardMsg leaderboardCmd
+                , Cmd.map LoginMsg loginCmd
+                , Cmd.map RunnerMsg runnerCmd
+                ]
+    in
+        ( initModel, cmds )
 
 
 
@@ -28,13 +64,47 @@ type Page
 
 type Msg
     = Navigate Page
+    | ChangePage Page
+    | LeaderboardMsg Leaderboard.Msg
+    | LoginMsg Login.Msg
+    | RunnerMsg Runner.Msg
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         Navigate page ->
-            ( page, Cmd.none )
+            ( { model | page = page }, Navigation.newUrl <| pageToHash page )
+
+        ChangePage page ->
+            ( { model | page = page }, Cmd.none )
+
+        LeaderboardMsg msg ->
+            let
+                ( leaderboardModel, cmd ) =
+                    Leaderboard.update msg model.leaderBoard
+            in
+                ( { model | leaderBoard = leaderboardModel }
+                , Cmd.map LeaderboardMsg cmd
+                )
+
+        LoginMsg msg ->
+            let
+                ( loginModel, cmd ) =
+                    Login.update msg model.login
+            in
+                ( { model | login = loginModel }
+                , Cmd.map LoginMsg cmd
+                )
+
+        RunnerMsg msg ->
+            let
+                ( runnerModel, cmd ) =
+                    Runner.update msg model.runner
+            in
+                ( { model | runner = runnerModel }
+                , Cmd.map RunnerMsg cmd
+                )
 
 
 
@@ -45,13 +115,25 @@ view : Model -> Html Msg
 view model =
     let
         page =
-            case model of
+            case model.page of
                 NotFound ->
                     div []
                         [ h1 []
                             [ text "Page not found"
                             ]
                         ]
+
+                LeaderboardPage ->
+                    Html.map LeaderboardMsg
+                        (Leaderboard.view model.leaderBoard)
+
+                LoginPage ->
+                    Html.map LoginMsg
+                        (Login.view model.login)
+
+                RunnerPage ->
+                    Html.map RunnerMsg
+                        (Runner.view model.runner)
     in
         div []
             [ viewHeader model
@@ -60,6 +142,7 @@ view model =
                     [ page
                     ]
                 ]
+            , p [] [ text (toString model) ]
             ]
 
 
@@ -67,15 +150,15 @@ viewHeader : Model -> Html Msg
 viewHeader model =
     nav [ class "nav hero is-default" ]
         [ div [ class "container" ]
-            [ a [ class "nav-item logo" ] [ text "Race Results" ]
+            [ a [ href "/", class "nav-item logo" ] [ text "Race Results" ]
             , a
                 [ class "nav-item"
-                , href "#"
+                , href "#runner"
                 ]
-                [ text "Leaderboard" ]
+                [ text "Add runner" ]
             , a
                 [ class "nav-item"
-                , href "#"
+                , href "#login"
                 ]
                 [ text "Login" ]
             ]
@@ -84,12 +167,68 @@ viewHeader model =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    Sub.none
+    let
+        leaderBoardSub =
+            Leaderboard.subscriptions model.leaderBoard
+
+        loginSub =
+            Login.subscriptions model.login
+
+        runnerSub =
+            Runner.subscriptions model.runner
+    in
+        Sub.batch
+            [ Sub.map LeaderboardMsg leaderBoardSub
+            , Sub.map LoginMsg loginSub
+            , Sub.map RunnerMsg runnerSub
+            ]
+
+
+hashToPage : String -> Page
+hashToPage hash =
+    case hash of
+        "#/" ->
+            LeaderboardPage
+
+        "" ->
+            LeaderboardPage
+
+        "#login" ->
+            LoginPage
+
+        "#runner" ->
+            RunnerPage
+
+        _ ->
+            NotFound
+
+
+pageToHash : Page -> String
+pageToHash page =
+    case page of
+        LeaderboardPage ->
+            "#/"
+
+        NotFound ->
+            "#notfound"
+
+        LoginPage ->
+            "#login"
+
+        RunnerPage ->
+            "#runner"
+
+
+locationToMsg : Location -> Msg
+locationToMsg location =
+    location.hash
+        |> hashToPage
+        |> ChangePage
 
 
 main : Program Never Model Msg
 main =
-    Html.program
+    Navigation.program locationToMsg
         { init = init
         , view = view
         , update = update
