@@ -1,7 +1,8 @@
-module Main exposing (..)
+port module Main exposing (..)
 
 import Html exposing (Html, div, nav, a, span, text, header, h1, p)
 import Html.Attributes exposing (href, class)
+import Html.Events exposing (onClick)
 import Navigation exposing (program, Location)
 import Leaderboard
 import Login
@@ -28,8 +29,19 @@ type Page
     | RunnerPage
 
 
-init : Location -> ( Model, Cmd Msg )
-init location =
+type alias Flags =
+    { token : Maybe String
+    }
+
+
+port saveToken : String -> Cmd msg
+
+
+port removeToken : () -> Cmd msg
+
+
+init : Flags -> Location -> ( Model, Cmd Msg )
+init flags location =
     let
         page =
             hashToPage location.hash
@@ -48,8 +60,8 @@ init location =
             , leaderBoard = leaderBoardInitModel
             , login = loginInitModel
             , runner = runnerInitModel
-            , token = Nothing
-            , loggedIn = False
+            , token = flags.token
+            , loggedIn = flags.token /= Nothing
             }
 
         cmds =
@@ -72,6 +84,7 @@ type Msg
     | LeaderboardMsg Leaderboard.Msg
     | LoginMsg Login.Msg
     | RunnerMsg Runner.Msg
+    | LogOut
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -99,13 +112,24 @@ update msg model =
 
                 loggedIn =
                     token /= Nothing
+
+                saveTokenCmd =
+                    case token of
+                        Just jwt ->
+                            saveToken jwt
+
+                        Nothing ->
+                            Cmd.none
             in
                 ( { model
                     | login = loginModel
                     , token = token
                     , loggedIn = loggedIn
                   }
-                , Cmd.map LoginMsg cmd
+                , Cmd.batch
+                    [ Cmd.map LoginMsg cmd
+                    , saveTokenCmd
+                    ]
                 )
 
         RunnerMsg msg ->
@@ -116,6 +140,17 @@ update msg model =
                 ( { model | runner = runnerModel }
                 , Cmd.map RunnerMsg cmd
                 )
+
+        LogOut ->
+            ( { model
+                | token = Nothing
+                , loggedIn = False
+              }
+            , Cmd.batch
+                [ removeToken ()
+                , Navigation.newUrl (pageToHash LoginPage)
+                ]
+            )
 
 
 
@@ -159,21 +194,34 @@ view model =
 
 viewHeader : Model -> Html Msg
 viewHeader model =
-    nav [ class "nav hero is-default" ]
-        [ div [ class "container" ]
-            [ a [ href "/", class "nav-item logo" ] [ text "Race Results" ]
-            , a
-                [ class "nav-item"
-                , href "#runner"
+    let
+        logInOutButton =
+            case model.loggedIn of
+                True ->
+                    a
+                        [ class "nav-item"
+                        , onClick LogOut
+                        ]
+                        [ text "Log out" ]
+
+                False ->
+                    a
+                        [ class "nav-item"
+                        , onClick (Navigate LoginPage)
+                        ]
+                        [ text "Login" ]
+    in
+        nav [ class "nav hero is-default" ]
+            [ div [ class "container" ]
+                [ a [ onClick (Navigate LeaderboardPage), class "nav-item logo" ] [ text "Race Results" ]
+                , a
+                    [ class "nav-item"
+                    , onClick (Navigate RunnerPage)
+                    ]
+                    [ text "Add runner" ]
+                , logInOutButton
                 ]
-                [ text "Add runner" ]
-            , a
-                [ class "nav-item"
-                , href "#login"
-                ]
-                [ text "Login" ]
             ]
-        ]
 
 
 subscriptions : Model -> Sub Msg
@@ -237,9 +285,9 @@ locationToMsg location =
         |> ChangePage
 
 
-main : Program Never Model Msg
+main : Program Flags Model Msg
 main =
-    Navigation.program locationToMsg
+    Navigation.programWithFlags locationToMsg
         { init = init
         , view = view
         , update = update

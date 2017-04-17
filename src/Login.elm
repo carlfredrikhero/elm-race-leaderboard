@@ -1,7 +1,7 @@
 module Login exposing (..)
 
 import Html exposing (Html, form, input, div, h1, text, p, button, nav, a)
-import Html.Attributes exposing (type_, placeholder, value, class, href, method)
+import Html.Attributes exposing (type_, placeholder, value, class, href, method, autocomplete)
 import Html.Events exposing (onInput, onSubmit)
 import Http exposing (..)
 import Json.Encode as JE
@@ -123,6 +123,7 @@ view model =
                             "Password"
                             [ class "input"
                             , type_ "password"
+                            , autocomplete False
                             , onInput PasswordInput
                             , value model.password
                             , placeholder "Password"
