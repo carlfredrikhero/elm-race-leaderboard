@@ -29,6 +29,11 @@ type Page
     | RunnerPage
 
 
+authPages : List Page
+authPages =
+    [ RunnerPage ]
+
+
 type alias Flags =
     { token : Maybe String
     }
@@ -46,6 +51,12 @@ init flags location =
         page =
             hashToPage location.hash
 
+        loggedIn =
+            flags.token /= Nothing
+
+        ( updatedPage, cmd ) =
+            authRedirect page loggedIn
+
         ( leaderBoardInitModel, leaderboardCmd ) =
             Leaderboard.init
 
@@ -56,12 +67,12 @@ init flags location =
             Runner.init
 
         initModel =
-            { page = page
+            { page = updatedPage
             , leaderBoard = leaderBoardInitModel
             , login = loginInitModel
             , runner = runnerInitModel
             , token = flags.token
-            , loggedIn = flags.token /= Nothing
+            , loggedIn = loggedIn
             }
 
         cmds =
@@ -69,9 +80,23 @@ init flags location =
                 [ Cmd.map LeaderboardMsg leaderboardCmd
                 , Cmd.map LoginMsg loginCmd
                 , Cmd.map RunnerMsg runnerCmd
+                , cmd
                 ]
     in
         ( initModel, cmds )
+
+
+authenticatePage : Page -> Bool -> Bool
+authenticatePage page loggedIn =
+    loggedIn || not (List.member page authPages)
+
+
+authRedirect : Page -> Bool -> ( Page, Cmd Msg )
+authRedirect page loggedIn =
+    if authenticatePage page loggedIn then
+        ( page, Cmd.none )
+    else
+        ( LoginPage, Navigation.modifyUrl <| pageToHash LoginPage )
 
 
 
@@ -94,7 +119,11 @@ update msg model =
             ( { model | page = page }, Navigation.newUrl <| pageToHash page )
 
         ChangePage page ->
-            ( { model | page = page }, Cmd.none )
+            let
+                ( updatedPage, cmd ) =
+                    authRedirect page model.loggedIn
+            in
+                ( { model | page = updatedPage }, cmd )
 
         LeaderboardMsg msg ->
             let
@@ -192,6 +221,18 @@ view model =
             ]
 
 
+addRunnerLinkView : Model -> Html Msg
+addRunnerLinkView { loggedIn } =
+    if loggedIn then
+        a
+            [ class "nav-item"
+            , onClick (Navigate RunnerPage)
+            ]
+            [ text "Add runner" ]
+    else
+        text ""
+
+
 viewHeader : Model -> Html Msg
 viewHeader model =
     let
@@ -214,11 +255,7 @@ viewHeader model =
         nav [ class "nav hero is-default" ]
             [ div [ class "container" ]
                 [ a [ onClick (Navigate LeaderboardPage), class "nav-item logo" ] [ text "Race Results" ]
-                , a
-                    [ class "nav-item"
-                    , onClick (Navigate RunnerPage)
-                    ]
-                    [ text "Add runner" ]
+                , addRunnerLinkView model
                 , logInOutButton
                 ]
             ]
