@@ -7,6 +7,10 @@ import Json.Encode as JE
 import Json.Decode as JD
 import Json.Decode.Pipeline as JDP
 import WebSocket exposing (..)
+import Time exposing (every, second)
+import Date
+import Date.Extra.Format as DateFormat
+import Date.Extra.Config.Config_en_us as DateConfig
 
 
 -- model
@@ -72,6 +76,7 @@ type alias RunnerWsMsg =
 type Msg
     = SearchInput String
     | WsMessage String
+    | Tick Time.Time
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -82,6 +87,33 @@ update msg model =
 
         WsMessage wsMsg ->
             wsMessage wsMsg model
+
+        Tick time ->
+            ( tick time model, Cmd.none )
+
+
+tick : Float -> Model -> Model
+tick time model =
+    let
+        updatedRunners =
+            List.map (advanceDistance time) model.runners
+    in
+        { model | runners = updatedRunners }
+
+
+advanceDistance : Float -> Runner -> Runner
+advanceDistance time runner =
+    let
+        elapsedMinutes =
+            (time - runner.lastMarkerTime) / 1000 / 60
+    in
+        if runner.lastMarkerTime > 0 then
+            { runner
+                | estimatedDistance =
+                    runner.lastMarkerDistance + (runner.pace * elapsedMinutes)
+            }
+        else
+            runner
 
 
 wsMessage : String -> Model -> ( Model, Cmd Msg )
@@ -95,6 +127,24 @@ wsMessage wsMsg model =
                       }
                     , Cmd.none
                     )
+
+                "update runner" ->
+                    let
+                        updatedRunners =
+                            List.map
+                                (\r ->
+                                    if r.id == runner.id then
+                                        runner
+                                    else
+                                        r
+                                )
+                                model.runners
+                    in
+                        ( { model
+                            | runners = updatedRunners
+                          }
+                        , Cmd.none
+                        )
 
                 _ ->
                     ( { model
@@ -140,7 +190,7 @@ view model =
             , searchPanel model.query
             ]
         , div [ class "section" ]
-            [ runnersPanel model
+            [ runners model
             ]
         ]
 
@@ -169,40 +219,94 @@ errorPanel error =
                 ]
 
 
-runnersPanel : Model -> Html Msg
-runnersPanel model =
-    table [ class "table" ]
-        [ thead []
-            [ tr []
-                [ th [] [ text "Id" ]
-                , th [] [ text "Name" ]
-                , th [] [ text "Location" ]
-                , th [] [ text "Bib" ]
-                , th [] [ text "Est. distance" ]
-                , th [] [ text "Last marker distance" ]
-                , th [] [ text "Last marker time" ]
-                , th [] [ text "Pace" ]
-                ]
+runners : Model -> Html Msg
+runners { query, runners } =
+    runners
+        |> List.filter (\r -> String.contains query r.name)
+        |> List.sortWith descComparison
+        |> List.map runner
+        |> tbody []
+        |> (\r -> runnersHeader :: [ r ])
+        |> table [ class "table" ]
+
+
+descComparison : Runner -> Runner -> Order
+descComparison a b =
+    case compare a.estimatedDistance b.estimatedDistance of
+        LT ->
+            GT
+
+        EQ ->
+            EQ
+
+        GT ->
+            LT
+
+
+runnersHeader : Html Msg
+runnersHeader =
+    thead []
+        [ tr []
+            [ th [] [ text "Name" ]
+            , th [] [ text "From" ]
+            , th [] [ text "Age" ]
+            , th [] [ text "Bib #" ]
+            , th [] [ text "Last Marker" ]
+            , th [] [ text "Est. Miles" ]
             ]
-        , tbody []
-            (List.map runnerRow model.runners)
         ]
 
 
-runnerRow : Runner -> Html Msg
-runnerRow runner =
+lastMarker : Runner -> Html Msg
+lastMarker runner =
+    if runner.lastMarkerTime > 0 then
+        text
+            (formatDistance runner.lastMarkerDistance
+                ++ " mi @ "
+                ++ (formatTime runner.lastMarkerTime)
+            )
+    else
+        text ""
+
+
+formatTime : Time.Time -> String
+formatTime time =
+    if time > 0 then
+        time
+            |> Date.fromTime
+            |> DateFormat.format DateConfig.config "%H:%M:%S %P"
+    else
+        ""
+
+
+runner : Runner -> Html Msg
+runner runner =
     tr []
-        [ td [] [ text runner.id ]
-        , td [] [ text runner.name ]
+        [ td [] [ text runner.name ]
         , td [] [ text runner.location ]
+        , td [] [ text (toString runner.age) ]
         , td [] [ text (toString runner.bib) ]
-        , td [] [ text (toString runner.estimatedDistance) ]
-        , td [] [ text (toString runner.lastMarkerDistance) ]
-        , td [] [ text (toString runner.lastMarkerTime) ]
-        , td [] [ text (toString runner.pace) ]
+        , td [] [ text (formatDistance runner.estimatedDistance) ]
+        , td [] [ lastMarker runner ]
         ]
+
+
+formatDistance : Float -> String
+formatDistance distance =
+    if distance <= 0 then
+        toString 0
+    else
+        distance
+            * 100
+            |> round
+            |> toFloat
+            |> flip (/) 100
+            |> toString
 
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    listen url WsMessage
+    Sub.batch
+        [ listen url WsMessage
+        , every second Tick
+        ]
