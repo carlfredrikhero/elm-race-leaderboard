@@ -217,7 +217,6 @@ view model =
                     [ page
                     ]
                 ]
-            , p [] [ text (toString model) ]
             ]
 
 
