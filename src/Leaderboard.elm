@@ -2,7 +2,7 @@ module Leaderboard exposing (..)
 
 import Html exposing (Html, form, div, input, table, tr, td, thead, tbody, th, text, nav, a)
 import Html.Attributes exposing (type_, placeholder, value, class, href, id)
-import Html.Events exposing (onInput)
+import Html.Events exposing (onInput, onClick)
 import Json.Encode as JE
 import Json.Decode as JD
 import Json.Decode.Pipeline as JDP
@@ -77,6 +77,7 @@ type Msg
     = SearchInput String
     | WsMessage String
     | Tick Time.Time
+    | ToggleActive
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -90,6 +91,9 @@ update msg model =
 
         Tick time ->
             ( tick time model, Cmd.none )
+
+        ToggleActive ->
+            ( { model | active = not model.active }, Cmd.none )
 
 
 tick : Float -> Model -> Model
@@ -187,6 +191,7 @@ view model =
     div [ id "leaderboard" ]
         [ div [ class "section" ]
             [ errorPanel model.error
+            , toggleActiveLink model.active
             , searchPanel model.query
             ]
         , div [ class "section" ]
@@ -257,6 +262,22 @@ runnersHeader =
         ]
 
 
+toggleActiveLink : Bool -> Html Msg
+toggleActiveLink active =
+    let
+        label =
+            if active then
+                "Pause realtime updates"
+            else
+                "Restore realtime updates"
+    in
+        a
+            [ class "nav-item"
+            , onClick (ToggleActive)
+            ]
+            [ text label ]
+
+
 lastMarker : Runner -> Html Msg
 lastMarker runner =
     if runner.lastMarkerTime > 0 then
@@ -286,8 +307,8 @@ runner runner =
         , td [] [ text runner.location ]
         , td [] [ text (toString runner.age) ]
         , td [] [ text (toString runner.bib) ]
-        , td [] [ text (formatDistance runner.estimatedDistance) ]
         , td [] [ lastMarker runner ]
+        , td [] [ text (formatDistance runner.estimatedDistance) ]
         ]
 
 
@@ -306,7 +327,10 @@ formatDistance distance =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    Sub.batch
-        [ listen url WsMessage
-        , every second Tick
-        ]
+    if model.active then
+        Sub.batch
+            [ listen url WsMessage
+            , every second Tick
+            ]
+    else
+        Sub.none

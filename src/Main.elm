@@ -225,7 +225,7 @@ addRunnerLinkView { loggedIn } =
     if loggedIn then
         a
             [ class "nav-item"
-            , onClick (Navigate RunnerPage)
+            , href ("/" ++ pageToHash RunnerPage)
             ]
             [ text "Add runner" ]
     else
